@@ -5,7 +5,7 @@ local helpers = require("Navigate/util/helpers")
 local NavigateAddon = {
     name = "Navigate",
     author = "Misosoup",
-    version = "1.0.1",
+    version = "1.0.2",
     desc = "Share points."
 }
 
@@ -51,8 +51,8 @@ local function OnChatMessage(channelId, speakerId, _, speakerName, message)
     local sharedCode = string.find(message, '[Navigate:', 1, true)
     -- TODO check if sender not player
     local unitId = api.Unit:GetUnitId('player')
-    -- if sharedCode ~= nil then
-    if sharedCode ~= nil and unitId ~= speakerId then
+    if sharedCode ~= nil then
+        -- if sharedCode ~= nil and unitId ~= speakerId then
         local trimmed = string.trim(message:match("%[Navigate:(.+)%]"))
         if trimmed then
             UI.CreateIncomingShareWindow(speakerName, trimmed)

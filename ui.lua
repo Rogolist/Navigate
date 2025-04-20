@@ -574,7 +574,7 @@ UI.CreateMainWindow = function()
     end
     function markButtonWnd:OnDragStop()
         markButtonWnd:StopMovingOrSizing()
-        local x, y = markButtonWnd:GetOffset()
+        local x, y = markButtonWnd:GetEffectiveOffset()
         api.Cursor:ClearCursor()
         UI.UpdateWindowCoords(x, y)
     end
