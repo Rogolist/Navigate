@@ -5,7 +5,7 @@ local helpers = require("Navigate/util/helpers")
 local NavigateAddon = {
     name = "Navigate",
     author = "Misosoup",
-    version = "1.0.2",
+    version = "1.1.0",
     desc = "Share points."
 }
 
@@ -16,9 +16,10 @@ local settings = {}
 local function OnUpdate(dt)
     lastUpdate = lastUpdate + dt
     -- 20 is ok
-    if lastUpdate < 20 then return end
+    if lastUpdate < 200 then return end
     lastUpdate = dt
 
+    if UI.TrackingData ~= nil then UI.UpdateTrackingData() end
 end
 
 NavigateAddon.Init = function() end
@@ -35,7 +36,7 @@ local function Load()
     api.Log:Info("Loaded " .. NavigateAddon.name .. " v" ..
                      NavigateAddon.version .. " by " .. NavigateAddon.author)
     api.On("UPDATE", OnUpdate)
-    api.File:Write('Navigate/dev.txt', UIC)
+
 end
 
 local function Unload()

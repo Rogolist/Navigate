@@ -53,7 +53,7 @@ function helpers.createEdit(id, parent, text, offsetX, offsetY)
     field.style:SetColor(0, 0, 0, 1)
     field.style:SetAlign(ALIGN.LEFT)
     -- field:SetDigit(true)
-    field:SetInitVal(text)
+    field:SetInitVal(tostring(text))
     -- field:SetMaxTextLength(4)
     return field
 end
@@ -260,8 +260,8 @@ function helpers.getShareLink(data)
     return data
 end
 
+local coordCoef = 0.00097657363894522145695357130138029
 function helpers.latitudeSextantToDegrees(direction, degrees, minutes, seconds)
-    local coordCoef = 0.00097657363894522145695357130138029
     local yCoords = 0
     yCoords = seconds / 60
     yCoords = (yCoords + minutes) / 60
@@ -271,7 +271,6 @@ function helpers.latitudeSextantToDegrees(direction, degrees, minutes, seconds)
 
 end
 function helpers.longitudeSextantToDegrees(direction, degrees, minutes, seconds)
-    local coordCoef = 0.00097657363894522145695357130138029
     local xCoords = 0
     xCoords = seconds / 60
     xCoords = (xCoords + minutes) / 60
@@ -301,6 +300,220 @@ function helpers.sextantFromString(str)
         min_lat = tonumber(parts[7]),
         sec_lat = tonumber(parts[8])
     }
+end
+
+function helpers.calcDistanceBetweenSextants(sex1, sex2)
+    local x1 = helpers.longitudeSextantToDegrees(sex1.longitude, sex1.deg_long,
+                                                 sex1.min_long, sex1.sec_long)
+    local y1 = helpers.latitudeSextantToDegrees(sex1.latitude, sex1.deg_lat,
+                                                sex1.min_lat, sex1.sec_lat)
+
+    local x2 = helpers.longitudeSextantToDegrees(sex2.longitude, sex2.deg_long,
+                                                 sex2.min_long, sex2.sec_long)
+    local y2 = helpers.latitudeSextantToDegrees(sex2.latitude, sex2.deg_lat,
+                                                sex2.min_lat, sex2.sec_lat)
+
+    -- Расчёт расстояния
+    local dx = x2 - x1
+    local dy = y2 - y1
+    local distance = math.sqrt(dx * dx + dy * dy)
+    return tonumber(string.format("%.1f", distance))
+end
+
+function helpers.getDate(timestamp)
+    local settings = helpers.getSettings()
+    local timestamp = timestamp or api.Time:GetLocalTime()
+    local timezone_offset = settings.timezone_offset * 3600
+    local localTimestamp = X2Util:StrNumericAdd(tostring(timestamp),
+                                                tostring(timezone_offset))
+
+    -- Количество секунд в сутках
+    local secondsInADay = "86400"
+
+    -- Вычисляем количество дней, прошедших с 1 января 1970
+    local daysSinceEpoch = tonumber(X2Util:DivideNumberString(localTimestamp,
+                                                              secondsInADay))
+    -- Определяем год
+    local year = 1970
+    while daysSinceEpoch >= 365 do
+        -- Проверяем високосный год
+        local isLeapYear = (year % 4 == 0 and year % 100 ~= 0) or
+                               (year % 400 == 0)
+        local daysInYear = isLeapYear and 366 or 365
+
+        -- Если дней хватает на целый год, вычитаем его
+        if daysSinceEpoch >= daysInYear then
+            daysSinceEpoch = tonumber(X2Util:StrNumericSub(tostring(
+                                                               daysSinceEpoch),
+                                                           tostring(daysInYear)))
+            year = year + 1
+        else
+            break
+        end
+    end
+
+    -- Определяем месяц и день
+    local month = 1
+    local daysInMonth = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+
+    -- Учитываем високосные годы
+    if (year % 4 == 0 and year % 100 ~= 0) or (year % 400 == 0) then
+        daysInMonth[2] = 29
+    end
+
+    while daysSinceEpoch >= daysInMonth[month] do
+        daysSinceEpoch = tonumber(X2Util:StrNumericSub(tostring(daysSinceEpoch),
+                                                       tostring(
+                                                           daysInMonth[month])))
+        month = month + 1
+    end
+
+    local day = X2Util:StrNumericAdd(tostring(daysSinceEpoch), "1") -- Дни считаются с 0, поэтому +1
+
+    -- Вычисляем часы, минуты, секунды
+    local fullDaysInSeconds = X2Util:StrIntegerMul(
+                                  X2Util:DivideNumberString(localTimestamp,
+                                                            secondsInADay),
+                                  secondsInADay)
+    local remainingSeconds = X2Util:StrNumericSub(localTimestamp,
+                                                  fullDaysInSeconds)
+
+    local hours = X2Util:DivideNumberString(remainingSeconds, "3600")
+    local hoursInSeconds = X2Util:StrIntegerMul(hours, "3600")
+
+    local minutes = X2Util:DivideNumberString(
+                        X2Util:StrNumericSub(remainingSeconds, hoursInSeconds),
+                        "60")
+    local minutesInSeconds = X2Util:StrIntegerMul(minutes, "60")
+
+    local seconds = X2Util:StrNumericSub(
+                        X2Util:StrNumericSub(remainingSeconds, hoursInSeconds),
+                        minutesInSeconds)
+
+    local weekday = (tonumber(daysSinceEpoch) + 4) % 7
+
+    -- Посчитаем день в году
+    local dayOfYear = 0
+    for m = 1, month - 1 do dayOfYear = dayOfYear + daysInMonth[m] end
+    dayOfYear = dayOfYear + tonumber(day)
+
+    -- Определяем день недели 1 января
+    local jan1Weekday = (weekday - (dayOfYear % 7) + 7) % 7 -- День недели 1 января
+
+    -- ISO-нумерация недель (первая неделя начинается с понедельника)
+    local weekNumber = math.floor((dayOfYear + jan1Weekday - 1) / 7) + 1
+
+    return {
+        year = year,
+        month = month,
+        day = tonumber(day),
+        hours = tonumber(hours),
+        minutes = tonumber(minutes),
+        seconds = tonumber(seconds),
+        weekday = weekday,
+        weekNumber = weekNumber, -- Номер недели
+        dayOfYear = dayOfYear
+    }
+end
+
+function helpers.getAngleToTarget(curX, curY, targetX, targetY)
+    return math.atan2(targetY - curY, targetX - curX)
+end
+
+function helpers.getAngleOfMovement(prevX, prevY, curX, curY)
+    return math.atan2(curY - prevY, curX - prevX)
+end
+
+-- Функция для вычисления угла между двумя векторами
+function helpers.calcAngleBetweenVectors(x1, y1, x2, y2)
+    local dotProduct = x1 * x2 + y1 * y2 -- Скалярное произведение
+    local len1 = math.sqrt(x1 * x1 + y1 * y1) -- Длина первого вектора
+    local len2 = math.sqrt(x2 * x2 + y2 * y2) -- Длина второго вектора
+    local cosTheta = dotProduct / (len1 * len2) -- Косинус угла
+    local angle = math.acos(cosTheta) -- Угол между векторами
+    return angle -- Возвращаем угол в радианах
+end
+
+function helpers.getRelativeDirection(prevPos, curPos, targetPos)
+    -- Преобразуем позиции в координаты
+    local curX = helpers.longitudeSextantToDegrees(curPos.longitude,
+                                                   curPos.deg_long,
+                                                   curPos.min_long,
+                                                   curPos.sec_long)
+    local curY = helpers.latitudeSextantToDegrees(curPos.latitude,
+                                                  curPos.deg_lat,
+                                                  curPos.min_lat, curPos.sec_lat)
+    local targetX = helpers.longitudeSextantToDegrees(targetPos.longitude,
+                                                      targetPos.deg_long,
+                                                      targetPos.min_long,
+                                                      targetPos.sec_long)
+    local targetY = helpers.latitudeSextantToDegrees(targetPos.latitude,
+                                                     targetPos.deg_lat,
+                                                     targetPos.min_lat,
+                                                     targetPos.sec_lat)
+
+    local prevX = helpers.longitudeSextantToDegrees(prevPos.longitude,
+                                                    prevPos.deg_long,
+                                                    prevPos.min_long,
+                                                    prevPos.sec_long)
+    local prevY = helpers.latitudeSextantToDegrees(prevPos.latitude,
+                                                   prevPos.deg_lat,
+                                                   prevPos.min_lat,
+                                                   prevPos.sec_lat)
+
+    -- Векторы
+    local dx1, dy1 = curX - prevX, curY - prevY -- движение игрока
+    local dx2, dy2 = targetX - curX, targetY - curY -- к цели
+
+    -- Угол между ними
+    local angle = helpers.calcAngleBetweenVectors(dx1, dy1, dx2, dy2)
+
+    -- Переводим угол в градусы
+    local degrees = math.deg(angle)
+
+    -- Нормализуем угол в диапазон [0, 360)
+    degrees = (degrees + 360) % 360
+
+    return degrees
+end
+
+function helpers.getArrowByAngle(angle)
+    -- Нормализуем угол в диапазон [0, 360)
+    angle = angle % 360
+
+    -- Устанавливаем порог для минимального отклонения (например, 15 градусов)
+    local threshold = 15 -- в градусах
+
+    -- Проверяем, в какой четверти находится угол
+    if angle >= 337.5 or angle < 22.5 then
+        return "↑" -- Север
+    elseif angle < 67.5 then
+        if angle < threshold then
+            return "→" -- Восток
+        else
+            return "↗" -- Северо-восток
+        end
+    elseif angle < 112.5 then
+        return "→" -- Восток
+    elseif angle < 157.5 then
+        if angle < threshold then
+            return "→" -- Восток
+        else
+            return "↘" -- Юго-восток
+        end
+    elseif angle < 202.5 then
+        return "↓" -- Юг
+    elseif angle < 247.5 then
+        if angle < threshold then
+            return "←" -- Запад
+        else
+            return "↙" -- Юго-запад
+        end
+    elseif angle < 292.5 then
+        return "←" -- Запад
+    else
+        return "MOVE" -- Северо-запад
+    end
 end
 
 return helpers

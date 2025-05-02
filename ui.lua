@@ -11,6 +11,7 @@ UI.Init = function(cnv)
     CANVAS = cnv
     settings = helpers.getSettings()
     UI.CreateMainWindow()
+    UI.CreateTrackWindow();
     UI.CreateList()
     UI.CreateShareWindow()
     UI.CreateNewPointWindow()
@@ -146,6 +147,12 @@ UI.UpdateWindowCoords = function(x, y)
     api.SaveSettings()
 end
 
+UI.UpdateTrackWindowCoords = function(x, y)
+    settings.TrackWindowX = x
+    settings.TrackWindowY = y
+    api.SaveSettings()
+end
+
 UI.listControls = {}
 
 UI.ListRowRenderFunc = function(frame, rowIndex, colIndex, subItem)
@@ -162,7 +169,7 @@ UI.ListRowRenderFunc = function(frame, rowIndex, colIndex, subItem)
         ApplyTextColor(name, FONT_COLOR.DEFAULT)
         UI.listControls[rowIndex].name = name
     end
-    -- coords column
+    -- actions column
     if colIndex == 2 then
         local coords = helpers.createEdit('coordsEdit', subItem, '', 0, 0)
         coords:RemoveAllAnchors()
@@ -170,6 +177,52 @@ UI.ListRowRenderFunc = function(frame, rowIndex, colIndex, subItem)
         coords.style:SetAlign(ALIGN.LEFT)
         ApplyTextColor(coords, FONT_COLOR.DEFAULT)
         UI.listControls[rowIndex].coords = coords
+        UI.listControls[rowIndex].coords:Show(false)
+
+        -- track button
+        local trackButton = helpers.createButton('trackButton', subItem, '', 0,
+                                                 0)
+        api.Interface:ApplyButtonSkin(trackButton, BUTTON_CONTENTS.MAP_ENEMY_BTN)
+        trackButton:RemoveAllAnchors()
+        trackButton:AddAnchor("CENTER", subItem, -20, 0)
+        trackButton.style:SetAlign(ALIGN.CENTER)
+        ApplyTextColor(trackButton, FONT_COLOR.DEFAULT)
+        trackButton:SetExtent(30, 30)
+        local trackTooltip = helpers.createTooltip('trackTooltip', trackButton,
+                                                   '', 0, -20)
+        trackTooltip:SetInset(2, 2, 2, 2)
+        function trackButton.OnEnter(self)
+            trackTooltip:Show(true)
+            trackTooltip:AddLine('Track', "", 0, "left", ALIGN.LEFT, 0)
+        end
+        trackButton:SetHandler("OnEnter", trackButton.OnEnter)
+        function trackButton.OnLeave(self) trackTooltip:Show(false) end
+        trackButton:SetHandler("OnLeave", trackButton.OnLeave)
+        UI.listControls[rowIndex].trackButton = trackButton
+        -- /track button
+
+        -- share button
+        local shareButton = helpers.createButton('shareButton', subItem, '', 0,
+                                                 0)
+        api.Interface:ApplyButtonSkin(shareButton, BUTTON_CONTENTS.REPORT)
+        shareButton:RemoveAllAnchors()
+        shareButton:AddAnchor("CENTER", trackButton, 30, 0)
+        shareButton.style:SetAlign(ALIGN.CENTER)
+        ApplyTextColor(shareButton, FONT_COLOR.DEFAULT)
+        shareButton:SetExtent(30, 30)
+
+        local shareTooltip = helpers.createTooltip('shareTooltip', shareButton,
+                                                   '', 0, -20)
+        shareTooltip:SetInset(2, 2, 2, 2)
+        function shareButton.OnEnter(self)
+            shareTooltip:Show(true)
+            shareTooltip:AddLine('Share', "", 0, "left", ALIGN.LEFT, 0)
+        end
+        shareButton:SetHandler("OnEnter", shareButton.OnEnter)
+        function shareButton.OnLeave(self) shareTooltip:Show(false) end
+        shareButton:SetHandler("OnLeave", shareButton.OnLeave)
+        UI.listControls[rowIndex].shareButton = shareButton
+        -- /share button
     end
     -- distance column
     if colIndex == 3 then
@@ -194,7 +247,7 @@ UI.ListRowRenderFunc = function(frame, rowIndex, colIndex, subItem)
     -- map column
     if colIndex == 5 then
         local map = helpers.createButton('mapButton', subItem, '', 0, 0)
-        api.Interface:ApplyButtonSkin(map, helpers.BUTTON_ICON.MAIN_MENU_MAP)
+        api.Interface:ApplyButtonSkin(map, BUTTON_CONTENTS.MAP_OPEN)
         map:RemoveAllAnchors()
         map:AddAnchor("CENTER", subItem, 0, 0)
         map.style:SetAlign(ALIGN.CENTER)
@@ -206,10 +259,9 @@ UI.ListRowRenderFunc = function(frame, rowIndex, colIndex, subItem)
         -- update button
         local updateButton = helpers.createButton('updateButton', subItem, '',
                                                   0, 0)
-        api.Interface:ApplyButtonSkin(updateButton,
-                                      helpers.BUTTON_ICON.PORTAL_RENAME)
+        api.Interface:ApplyButtonSkin(updateButton, BUTTON_CONTENTS.MAP_LINE_BTN)
         updateButton:RemoveAllAnchors()
-        updateButton:AddAnchor("CENTER", subItem, -35, 0)
+        updateButton:AddAnchor("CENTER", subItem, -20, 0)
         updateButton.style:SetAlign(ALIGN.CENTER)
         ApplyTextColor(updateButton, FONT_COLOR.DEFAULT)
         updateButton:SetExtent(30, 30)
@@ -226,35 +278,13 @@ UI.ListRowRenderFunc = function(frame, rowIndex, colIndex, subItem)
         UI.listControls[rowIndex].updateButton = updateButton
         -- /update button
 
-        -- share button
-        local shareButton = helpers.createButton('shareButton', subItem, '', 0,
-                                                 0)
-        api.Interface:ApplyButtonSkin(shareButton, helpers.BUTTON_ICON
-                                          .INGAMESHOP_COMMERCIAL_MAIL)
-        shareButton:RemoveAllAnchors()
-        shareButton:AddAnchor("CENTER", updateButton, 30, 0)
-        shareButton.style:SetAlign(ALIGN.CENTER)
-        ApplyTextColor(shareButton, FONT_COLOR.DEFAULT)
-        local shareTooltip = helpers.createTooltip('shareTooltip', shareButton,
-                                                   '', 0, -20)
-        shareTooltip:SetInset(2, 2, 2, 2)
-        function shareButton.OnEnter(self)
-            shareTooltip:Show(true)
-            shareTooltip:AddLine('Share', "", 0, "left", ALIGN.LEFT, 0)
-        end
-        shareButton:SetHandler("OnEnter", shareButton.OnEnter)
-        function shareButton.OnLeave(self) shareTooltip:Show(false) end
-        shareButton:SetHandler("OnLeave", shareButton.OnLeave)
-        UI.listControls[rowIndex].shareButton = shareButton
-        -- /share button
-
         -- delete button
         local deleteButton = helpers.createButton('deleteButton', subItem, '',
                                                   0, 0)
         api.Interface:ApplyButtonSkin(deleteButton,
-                                      helpers.BUTTON_ICON.PORTAL_DELETE)
+                                      BUTTON_CONTENTS.SKILL_ABILITY_DELETE)
         deleteButton:RemoveAllAnchors()
-        deleteButton:AddAnchor("CENTER", shareButton, 30, 0)
+        deleteButton:AddAnchor("CENTER", updateButton, 30, 0)
         deleteButton.style:SetAlign(ALIGN.CENTER)
         ApplyTextColor(deleteButton, FONT_COLOR.DEFAULT)
         deleteButton:SetExtent(30, 30)
@@ -270,8 +300,8 @@ UI.ListRowRenderFunc = function(frame, rowIndex, colIndex, subItem)
         deleteButton:SetHandler("OnLeave", deleteButton.OnLeave)
         UI.listControls[rowIndex].deleteButton = deleteButton
         -- /delete button
-
     end
+
 end
 
 UI.ListRowSetFunc = function(subItem, data, setValue)
@@ -283,6 +313,8 @@ UI.ListRowSetFunc = function(subItem, data, setValue)
 
         local coords = helpers.sextantToString(data.sextant)
         UI.listControls[index].coords:SetText(coords)
+        UI.listControls[index].coords:SetEnable(false)
+        UI.listControls[index].coords:SetReadOnly(true)
         UI.listControls[index].distance:SetText(data.distance)
         UI.listControls[index].status:SetText(data.status)
 
@@ -310,6 +342,32 @@ UI.ListRowSetFunc = function(subItem, data, setValue)
         end
         mapButton:SetHandler("OnClick", mapButton.OnClick)
 
+        local trackButton = UI.listControls[index].trackButton
+        function trackButton.OnClick(self)
+            UI.TrackButtonClicked(data.realIndex)
+        end
+        trackButton:SetHandler('OnClick', trackButton.OnClick)
+
+        -- date tooltip
+        local dateTooltip = helpers.createTooltip('dateTooltip', subItem, '', 0,
+                                                  0)
+        dateTooltip:RemoveAllAnchors()
+        dateTooltip:AddAnchor('CENTER', subItem, 20, -30)
+        UI.listControls[index].dateTooltip = dateTooltip
+
+        function subItem.OnEnter(self)
+            local date = helpers.getDate(data.timestamp)
+            dateTooltip:ClearLines()
+            dateTooltip:AddLine(string.format(
+                                    'Created at: %02d.%02d.%d %02d:%02d',
+                                    date.day, date.month, date.year, date.hours,
+                                    date.minutes), "", 0, "left", ALIGN.LEFT, 0)
+            dateTooltip:Show(true)
+        end
+        subItem:SetHandler("OnEnter", subItem.OnEnter)
+        function subItem.OnLeave(self) dateTooltip:Show(false) end
+        subItem:SetHandler("OnLeave", subItem.OnLeave)
+
     end
 end
 
@@ -330,13 +388,21 @@ UI.fillListWithData = function(listCtrl, pageIndex)
     local savedItems = UI.GetSavedItems()
     savedItems = helpers.reverseTable(savedItems)
 
+    local curCoords = api.Map.GetPlayerSextants();
+
     for i = 1, #savedItems do
         local curElem = savedItems[i]
+
+        -- calc distance between points
+        local distance = helpers.calcDistanceBetweenSextants(curCoords,
+                                                             curElem.sextant)
+
         local itemData = {
             name = curElem.name,
             sextant = curElem.sextant,
             realIndex = #savedItems + 1 - i,
-            distance = 'WIP',
+            distance = distance .. ' m',
+            timestamp = curElem.timestamp,
             status = 'Saved',
             -- Required fields 
             isViewData = true,
@@ -421,11 +487,17 @@ UI.SaveButtonClicked = function(realIndex, index)
         table.insert(savedData, data)
     end
     UI.SaveItems(savedData)
+    local curPage = UI.listCtrl.pageControl:GetCurrentPageIndex()
+    UI.fillListWithData(UI.listCtrl, curPage)
     api.Log:Info('Saved point with name "' .. data.name .. '"')
 end
 
 UI.ImportPoint = function(pointName, sextant)
-    local data = {name = pointName, sextant = sextant}
+    local data = {
+        name = pointName,
+        sextant = sextant,
+        timestamp = api.Time:GetLocalTime()
+    }
     local savedData = UI.GetSavedItems()
     table.insert(savedData, data)
     UI.SaveItems(savedData)
@@ -460,6 +532,41 @@ UI.MapButtonClicked = function(realIndex)
                                                   data.sextant.sec_lat)
 
     api.Map:ToggleMapWithPortal(323, xMap, yMap, 100)
+end
+
+-- REAL TIME TRACKING
+UI.TrackingData = nil
+UI.TrackButtonClicked = function(realIndex)
+    local cur = UI.listItems[#UI.listItems + 1 - realIndex]
+    UI.TrackingData = {name = cur.name, sextant = cur.sextant, cur.timestamp}
+    UI.trackWindow:Show(true)
+end
+UI.prevPlayerPos = nil
+UI.UpdateTrackingData = function()
+    local curCoords = api.Map.GetPlayerSextants();
+    local distance = helpers.calcDistanceBetweenSextants(curCoords,
+                                                         UI.TrackingData.sextant)
+
+    -- стрелка
+    local arrow = ''
+    if UI.prevPlayerPos then
+        local angle = helpers.getRelativeDirection(UI.prevPlayerPos, curCoords,
+                                                   UI.TrackingData.sextant)
+        arrow = helpers.getArrowByAngle(angle)
+    end
+
+    -- сохранить текущие координаты для следующего обновления
+    UI.prevPlayerPos = curCoords
+
+    UI.trackWindow.markNameLabel:SetText(UI.TrackingData.name)
+    UI.trackWindow.distanceLabel:SetText(
+        string.format("%s %.1f m", arrow, distance))
+
+    -- UI.trackWindow.distanceLabel:SetEffectRotate(40, 0, 0)
+    UI.trackWindow.distanceLabel:SetMoveEffectType(1, "circle", 0, 0, 0.3, 0.2)
+    UI.trackWindow.distanceLabel:SetMoveEffectCircle(1, 0, -40)
+    UI.trackWindow.distanceLabel.style:SetFontSize(60)
+
 end
 
 UI.SaveNewPoint = function()
@@ -503,7 +610,7 @@ UI.CreateList = function()
             func = UI.ListRowRenderFunc
         }, {
             width = wndWidth / columnsCount,
-            text = "Coords",
+            text = "Actions",
             setFunc = UI.ListRowSetFunc,
             func = UI.ListRowRenderFunc
         }, {
@@ -549,7 +656,13 @@ UI.CreateList = function()
         UI.fillListWithData(UI.listCtrl, pageIndex)
     end
 end
-UI.ShowList = function() if listWnd ~= nil then listWnd:Show(true) end end
+UI.ShowList = function()
+    if listWnd ~= nil then
+        UI.fillListWithData(UI.listCtrl, 1)
+        listWnd:Show(true)
+    end
+
+end
 
 -- Create the main button
 UI.CreateMainWindow = function()
@@ -602,10 +715,92 @@ UI.CreateMainWindow = function()
 
 end
 
+-- Create track window
+UI.CreateTrackWindow = function()
+    UI.trackWindow = api.Interface:CreateEmptyWindow("trackWindow")
+    UI.trackWindow:AddAnchor("TOPLEFT", "UIParent", settings.TrackWindowX,
+                             settings.TrackWindowY)
+    UI.trackWindow.bg = UI.trackWindow:CreateNinePartDrawable(TEXTURE_PATH.HUD,
+                                                              "background")
+    UI.trackWindow.bg:SetTextureInfo("bg_quest")
+    UI.trackWindow.bg:SetColor(0, 0, 0, 0.5)
+    UI.trackWindow.bg:AddAnchor("TOPLEFT", UI.trackWindow, 0, 0)
+    UI.trackWindow.bg:AddAnchor("BOTTOMRIGHT", UI.trackWindow, 0, 0)
+    UI.trackWindow:SetExtent(150, 150)
+    UI.trackWindow:Show(false)
+
+    -- drag events for track window
+    function UI.trackWindow:OnDragStart(arg)
+        UI.trackWindow:StartMoving()
+        api.Cursor:ClearCursor()
+        api.Cursor:SetCursorImage(CURSOR_PATH.MOVE, 0, 0)
+    end
+    function UI.trackWindow:OnDragStop()
+        UI.trackWindow:StopMovingOrSizing()
+        local x, y = UI.trackWindow:GetEffectiveOffset()
+        api.Cursor:ClearCursor()
+        UI.UpdateTrackWindowCoords(x, y)
+    end
+
+    UI.trackWindow:SetHandler("OnDragStart", UI.trackWindow.OnDragStart)
+    UI.trackWindow:SetHandler("OnDragStop", UI.trackWindow.OnDragStop)
+
+    if UI.trackWindow.RegisterForDrag ~= nil then
+        UI.trackWindow:RegisterForDrag("LeftButton")
+    end
+    if UI.trackWindow.EnableDrag ~= nil then UI.trackWindow:EnableDrag(true) end
+    -- /drag events for track window
+
+    -- close button
+    UI.trackWindow.closeBtn = UI.trackWindow:CreateChildWidget("button",
+                                                               "closeBtn", 0,
+                                                               true)
+    UI.trackWindow.closeBtn:AddAnchor("TOPRIGHT", UI.trackWindow, -10, 5)
+    api.Interface:ApplyButtonSkin(UI.trackWindow.closeBtn,
+                                  BUTTON_BASIC.WINDOW_SMALL_CLOSE)
+    UI.trackWindow.closeBtn:Show(true)
+    UI.trackWindow.OnClose = nil
+
+    function UI.trackWindow.OnClose(button, clicktype)
+        UI.trackWindow:Show(false)
+        UI.TrackingData = nil
+    end
+
+    UI.trackWindow.closeBtn:SetHandler("OnClick", UI.trackWindow.OnClose)
+
+    -- labels
+    local trackingLabel = helpers.createLabel('trackingLabel', UI.trackWindow,
+                                              'Tracking:', 0, 0)
+    trackingLabel:RemoveAllAnchors()
+    trackingLabel:AddAnchor('TOPLEFT', UI.trackWindow, 20, 30)
+    ApplyTextColor(trackingLabel, FONT_COLOR.WHITE)
+
+    -- mark name label
+    local markNameLabel = helpers.createLabel('markNameLabel', UI.trackWindow,
+                                              'undefined point', 0, 0)
+    markNameLabel:RemoveAllAnchors()
+    markNameLabel:AddAnchor('CENTER', trackingLabel, 0, 20)
+    ApplyTextColor(markNameLabel, FONT_COLOR.WHITE)
+    UI.trackWindow.markNameLabel = markNameLabel
+
+    -- distance label
+    local distanceLabel = helpers.createLabel('distanceLabel', UI.trackWindow,
+                                              '100.3 m', 0, 0)
+    distanceLabel:RemoveAllAnchors()
+    distanceLabel:AddAnchor('CENTER', markNameLabel, 0, 40)
+    ApplyTextColor(distanceLabel, FONT_COLOR.WHITE)
+    UI.trackWindow.distanceLabel = distanceLabel
+
+end
+
 UI.UnLoad = function()
     if markButtonWnd ~= nil then
         markButtonWnd:Show(false)
         markButtonWnd = nil
+    end
+    if UI.trackWindow ~= nil then
+        UI.trackWindow:Show(false)
+        UI.trackWindow = nil
     end
     if listWnd ~= nil then
         listWnd:ReleaseHandler("OnEvent")
