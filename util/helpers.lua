@@ -140,6 +140,7 @@ function helpers.DrawListCtrlColumnSperatorLine(widget, totalCount, count,
     return divideLine
 end
 
+-- создание колонки
 function helpers.insertColumns(listCtrl, columns)
 
     for i = 1, #columns do
@@ -478,42 +479,93 @@ function helpers.getRelativeDirection(prevPos, curPos, targetPos)
 end
 
 function helpers.getArrowByAngle(angle)
-    -- Нормализуем угол в диапазон [0, 360)
-    angle = angle % 360
 
+
+
+
+    -- Нормализуем угол в диапазон [0, 360)
+	-- а зачем если перед этим мы сделали degrees = (degrees + 360) % 360 ?????????
+    angle = angle % 360
+	--return angle
+
+	
     -- Устанавливаем порог для минимального отклонения (например, 15 градусов)
     local threshold = 15 -- в градусах
 
+
+    if angle < 22.5 then
+		return "Прямо"--\n"
+	elseif (angle >= 22.5) and (angle < (90+22.5)) then
+		return "Поверни"--\n"
+	else --elseif (angle >= (180-22.5)) and (angle < (180+22.5)) then
+		return "Назад"--\n"
+	end
+	
+	
+
+
+	--[[
     -- Проверяем, в какой четверти находится угол
-    if angle >= 337.5 or angle < 22.5 then
-        return "↑" -- Север
+    if angle >= (360-22.5) or angle < (0+22.5) then
+        --return "↑" -- Север
+		--return "Nord"
+		return "Прямо \n"
     elseif angle < 67.5 then
         if angle < threshold then
-            return "→" -- Восток
+            --return "→" -- Восток
+			--return "East"
+			--return "Вправо \n"
+			return "Влево 1 \n"
         else
-            return "↗" -- Северо-восток
+            --return "↗" -- Северо-восток
+			--return "NE"
+			--return "Правее \n"
+			return "Левее 1 \n"
         end
     elseif angle < 112.5 then
-        return "→" -- Восток
+        --return "→" -- Восток
+		--return "East"
+		--return "Вправо \n"
+		return "Влево 2 \n"
     elseif angle < 157.5 then
         if angle < threshold then
-            return "→" -- Восток
+            --return "→" -- Восток
+			--return "East"
+			--return "Вправо \n"
+			return "Влево 3 \n"
         else
-            return "↘" -- Юго-восток
+            --return "↘" -- Юго-восток
+			--return "SE"
+			return "Правее назад 1 \n"
         end
-    elseif angle < 202.5 then
-        return "↓" -- Юг
+    elseif (angle >= (180-22.5)) and (angle < (180+22.5)) then
+        --return "↓" -- Юг
+		--return "South"
+		return "Назад \n"
     elseif angle < 247.5 then
         if angle < threshold then
-            return "←" -- Запад
+            --return "←" -- Запад
+			--return "West"
+			--return "Влево \n"
+			return "Вправо 1\n"
         else
-            return "↙" -- Юго-запад
+            --return "↙" -- Юго-запад
+			--return "SW"
+			return "Левее назад 1\n"
         end
     elseif angle < 292.5 then
-        return "←" -- Запад
+        --return "←" -- Запад
+		--return "West"
+		--return "Влево \n"
+		return "Вправо 2\n"
     else
-        return "MOVE" -- Северо-запад
+        --return "MOVE" -- Северо-запад
+		--return "NW"
+		--return "Левее \n"
+		return "Правее 1 \n"
     end
+	]]
+	
 end
 
 return helpers

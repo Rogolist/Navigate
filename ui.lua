@@ -10,12 +10,18 @@ local dataFileName = 'Navigate/data/items.lua'
 UI.Init = function(cnv)
     CANVAS = cnv
     settings = helpers.getSettings()
+		if settings.sort == nil then settings.sort = "name" end
     UI.CreateMainWindow()
     UI.CreateTrackWindow();
     UI.CreateList()
     UI.CreateShareWindow()
     UI.CreateNewPointWindow()
 end
+
+
+
+
+	
 
 UI.CreateNewPointWindow = function()
     listWnd.newPointWnd = api.Interface:CreateWindow("newPointWnd", 'New point')
@@ -126,6 +132,7 @@ UI.CreateIncomingShareWindow = function(senderName, trimmed)
 
 end
 
+-- окно чтобы поделиться точкой
 UI.CreateShareWindow = function()
     listWnd.shareWnd = api.Interface:CreateWindow("listWnd", 'Share a point')
     listWnd.shareWnd:AddAnchor("CENTER", "UIParent", 0, -150)
@@ -154,7 +161,6 @@ UI.UpdateTrackWindowCoords = function(x, y)
 end
 
 UI.listControls = {}
-
 UI.ListRowRenderFunc = function(frame, rowIndex, colIndex, subItem)
 
     -- check if listcontrols exist
@@ -167,6 +173,7 @@ UI.ListRowRenderFunc = function(frame, rowIndex, colIndex, subItem)
         name:AddAnchor("CENTER", subItem, 0, 0)
         name.style:SetAlign(ALIGN.LEFT)
         ApplyTextColor(name, FONT_COLOR.DEFAULT)
+		name:SetExtent(250, 30)	-- [Psejik] увеличиваем видимую подпись точки в таблице
         UI.listControls[rowIndex].name = name
     end
     -- actions column
@@ -304,6 +311,8 @@ UI.ListRowRenderFunc = function(frame, rowIndex, colIndex, subItem)
 
 end
 
+
+-- непонятная функция и непонятно, работает ли она ?
 UI.ListRowSetFunc = function(subItem, data, setValue)
     if setValue then
         -- Data Assignments
@@ -332,7 +341,7 @@ UI.ListRowSetFunc = function(subItem, data, setValue)
 
         local deleteButton = UI.listControls[index].deleteButton
         function deleteButton.OnClick(self)
-            UI.DeleteListItem(data.realIndex, data.index)
+            UI.DeleteListItem(data.realIndex1, data.index)
         end
         deleteButton:SetHandler("OnClick", deleteButton.OnClick)
 
@@ -358,10 +367,12 @@ UI.ListRowSetFunc = function(subItem, data, setValue)
         function subItem.OnEnter(self)
             local date = helpers.getDate(data.timestamp)
             dateTooltip:ClearLines()
+			--dateTooltip:SetExtent(300, 30)
             dateTooltip:AddLine(string.format(
                                     'Created at: %02d.%02d.%d %02d:%02d',
                                     date.day, date.month, date.year, date.hours,
                                     date.minutes), "", 0, "left", ALIGN.LEFT, 0)
+			--dateTooltip:SetMaxTextLength(200)
             dateTooltip:Show(true)
         end
         subItem:SetHandler("OnEnter", subItem.OnEnter)
@@ -371,9 +382,12 @@ UI.ListRowSetFunc = function(subItem, data, setValue)
     end
 end
 
-local pageSize = 8
+
+-- страницы
+local pageSize = 16 --8 -- число влияет на сжатие: сколько строк информации будут втиснуты на страницу
 UI.listItems = {}
 UI.unsavedItems = {}
+-- заполнение списка данными
 UI.fillListWithData = function(listCtrl, pageIndex)
     local startingIndex = 1
     if pageIndex > 1 then startingIndex = ((pageIndex - 1) * pageSize) + 1 end
@@ -385,9 +399,23 @@ UI.fillListWithData = function(listCtrl, pageIndex)
     local endingIndex = startingIndex + pageSize
     UI.listItems = {}
 
+	-- считали из файла
     local savedItems = UI.GetSavedItems()
-    savedItems = helpers.reverseTable(savedItems)
-
+	
+	--if settings.sort == "name" then settings.sort = "distance" else settings.sort = "name" end
+	
+	if settings.sort == "name" then
+		-- сортировка по имени
+		table.sort(savedItems, function( a,b )
+				if  a.name < b.name then
+					return true
+				end
+				return false
+			end	)
+	end
+	-- развернули список
+    --savedItems = helpers.reverseTable(savedItems)
+	-- текущие координаты игрока
     local curCoords = api.Map.GetPlayerSextants();
 
     for i = 1, #savedItems do
@@ -401,21 +429,65 @@ UI.fillListWithData = function(listCtrl, pageIndex)
             name = curElem.name,
             sextant = curElem.sextant,
             realIndex = #savedItems + 1 - i,
-            distance = distance .. ' m',
+            --distance = tostring(distance),	-- .. ' m',	-- убрал, чтобы работать не с текстом
+			distance = distance,
             timestamp = curElem.timestamp,
-            status = 'Saved',
+            --status = 'Saved',
             -- Required fields 
             isViewData = true,
             isAbstention = false
         }
+		
+		savedItems[i] = itemData
+		
+		-- наполнение страницы listItems
+		--[[
         table.insert(UI.listItems, itemData)
         if i >= startingIndex and i < endingIndex then
-            itemData.index = indexCount
+            itemData.index = indexCount	-- номер на странице
+				itemData.status = tostring(indexCount)
+            listCtrl:InsertData(i, 1, itemData)
+            indexCount = indexCount + 1
+        end
+		]]
+
+    end
+	
+	if settings.sort == "distance" then
+		-- сортировка по дальности
+		table.sort(savedItems, function( a,b )
+			if  a.distance < b.distance then
+				return true
+			end
+			return false
+		end	)
+	end
+	
+	-- развернули список
+    --savedItems = helpers.reverseTable(savedItems)
+	
+	for i = 1, #savedItems do
+        local curElem = savedItems[i]
+        local itemData = curElem
+		
+		curElem.distance = tostring(curElem.distance)
+		curElem.realIndex = #savedItems + 1 - i
+		curElem.realIndex1 = i
+		curElem.status = tostring(realIndex)
+		
+		-- наполнение страницы listItems
+        table.insert(UI.listItems, itemData)
+        if i >= startingIndex and i < endingIndex then
+            itemData.index = indexCount	-- номер на странице
+				itemData.status = tostring(indexCount)
             listCtrl:InsertData(i, 1, itemData)
             indexCount = indexCount + 1
         end
 
     end
+	
+	UI.SaveItems(savedItems)
+	
 
 end
 
@@ -426,6 +498,10 @@ UI.DeleteListItem = function(realIndex, index)
     local savedData = UI.GetSavedItems()
 
     if savedData[realIndex] ~= nil then
+	
+		--api.Log:Err(tostring(savedData[realIndex]))
+		--api.Log:Info(tostring(savedData[index]))
+	
         table.remove(savedData, realIndex)
         UI.SaveItems(savedData)
 
@@ -448,6 +524,10 @@ UI.DeleteListItem = function(realIndex, index)
 
     end
 end
+
+
+
+
 
 UI.ShareButtonClicked = function(realIndex)
     local cur = UI.listItems[#UI.listItems + 1 - realIndex]
@@ -500,6 +580,13 @@ UI.ImportPoint = function(pointName, sextant)
     }
     local savedData = UI.GetSavedItems()
     table.insert(savedData, data)
+	
+	-- для теста тут вставим сортировку
+	
+	--savedData = distanceSorting(savedData)
+	
+	--api.Log:Info(savedData)
+	
     UI.SaveItems(savedData)
     api.Log:Info('Saved point with name "' .. data.name .. '"')
 
@@ -507,7 +594,7 @@ UI.ImportPoint = function(pointName, sextant)
     UI.fillListWithData(UI.listCtrl, 1)
 
     if UI.listItems ~= nil then
-        UI.maxPage = math.ceil(#UI.listItems / pageSize)
+        UI.maxPage = math.ceil(#UI.listItems / pageSize)	-- количество страниц
     else
         UI.maxPage = 1
     end
@@ -518,6 +605,7 @@ UI.ImportPoint = function(pointName, sextant)
 
 end
 
+-- активация кнопки "показать на карте"
 UI.MapButtonClicked = function(realIndex)
     local cur = UI.listItems[#UI.listItems + 1 - realIndex]
     local data = {name = cur.name, sextant = cur.sextant}
@@ -547,9 +635,10 @@ UI.UpdateTrackingData = function()
     local distance = helpers.calcDistanceBetweenSextants(curCoords,
                                                          UI.TrackingData.sextant)
 
-    -- стрелка
+    -- стрелка (почему угол всегда положительный ?)
     local arrow = ''
     if UI.prevPlayerPos then
+		-- рассчет ведется по текущим и предыдущим координатам игрока, но почему ?
         local angle = helpers.getRelativeDirection(UI.prevPlayerPos, curCoords,
                                                    UI.TrackingData.sextant)
         arrow = helpers.getArrowByAngle(angle)
@@ -579,6 +668,49 @@ end
 
 -- /CLICKS EVENTS
 
+
+
+--[[
+UI.SortNameButtonClicked = function(realIndex)
+    local cur = UI.listItems[#UI.listItems + 1 - realIndex]
+    local data = {name = cur.name, sextant = cur.sextant}
+    listWnd.shareEdit:SetText(helpers.getShareLink(data))
+    listWnd.shareWnd:Show(true)
+end
+
+        local shareButton = UI.listControls[index].shareButton
+        function shareButton.OnClick(self)
+            UI.ShareButtonClicked(data.realIndex)
+        end
+        shareButton:SetHandler("OnClick", shareButton.OnClick)
+
+
+
+	-- Create an overlay button (кнопка открытия окна аддона)
+	local overlayWnd = api.Interface:CreateEmptyWindow("overlayWnd", "UIParent")
+	local overlayBtn = overlayWnd:CreateChildWidget("button", "overlayBtn", 0, true)
+    ApplyButtonSkin(overlayBtn, BUTTON_BASIC.DEFAULT)
+    overlayBtn:SetExtent(100, 32)
+    overlayBtn:SetText("Dawnsdrop Map")
+    overlayBtn.style:SetFontSize(13)
+    overlayBtn:Show(true)
+    overlayBtn:AddAnchor("TOPRIGHT", "UIParent", -450, 0)
+    function overlayBtn:OnClick()
+        local showWnd = not dawnsdropMapWindow:IsVisible()
+        dawnsdropMapWindow:Show(showWnd)
+    end 
+    overlayBtn:SetHandler("OnClick", overlayBtn.OnClick)
+	overlayWnd:Show(true)
+    overlayWnd.overlayBtn = overlayBtn
+
+	dawnsdropMapWindow:Show(false)
+
+    api.On("UPDATE", OnUpdate)
+	api.SaveSettings()
+]]	
+
+
+
 UI.listCtrl = nil
 UI.CreateList = function()
     listWnd = api.Interface:CreateWindow("listWnd", 'Saved points')
@@ -601,11 +733,12 @@ UI.CreateList = function()
     UI.listCtrl:AddAnchor("TOP", listWnd, -5, 40)
     UI.listCtrl.scroll:Show(false)
 
-    local columnsCount = 6
+    local columnsCount = 8 --6
+	-- создание колонок (функция в файле helpers)
     helpers.insertColumns(UI.listCtrl, {
         {
-            width = wndWidth / columnsCount,
-            text = "Name",
+            width = (wndWidth * 3) / columnsCount,	-- ширина колонки
+            text = "Name",							-- подпись колонки
             setFunc = UI.ListRowSetFunc,
             func = UI.ListRowRenderFunc
         }, {
@@ -636,7 +769,8 @@ UI.CreateList = function()
         }
     })
 
-    UI.listCtrl:InsertRows(pageSize, false)
+	-- добавление строк
+    UI.listCtrl:InsertRows(pageSize, false)	-- количество строк на странице
     UI.listCtrl.listCtrl:DisuseSorting()
     helpers.DrawListCtrlUnderLine(UI.listCtrl)
     UI.listCtrl.listCtrl:UseOverClickTexture()
@@ -656,6 +790,8 @@ UI.CreateList = function()
         UI.fillListWithData(UI.listCtrl, pageIndex)
     end
 end
+
+-- развернуть основное окно
 UI.ShowList = function()
     if listWnd ~= nil then
         UI.fillListWithData(UI.listCtrl, 1)
@@ -707,10 +843,19 @@ UI.CreateMainWindow = function()
     function markButton:OnClick() listWnd.newPointWnd:Show(true) end
     markButton:SetHandler('OnClick', markButton.OnClick)
 
+
+	-- кнопка открытия основного окна !
     listButton = helpers.createButton("listButton", markButtonWnd, "List", 20,
                                       40)
     listButton:SetExtent(55, 26)
-    function listButton:OnClick() UI.ShowList() end
+    --function listButton:OnClick() UI.ShowList() end
+	function listButton:OnClick()
+	
+		settings = helpers.getSettings() -- добавил повторное считывание настроек (возможно зря)
+		if settings.sort == "name" then settings.sort = "distance" else settings.sort = "name" end -- костыльная смена сортировки
+		UI.ShowList()
+		--api.Log:Info(settings)
+	end
     listButton:SetHandler('OnClick', listButton.OnClick)
 
 end
