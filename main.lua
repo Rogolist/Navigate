@@ -5,7 +5,7 @@ local helpers = require("Navigate/util/helpers")
 local NavigateAddon = {
     name = "Navigate",
     author = "Misosoup & Psejik",
-    version = "1.1.0a",
+    version = "1.2.1a",
     desc = "Share points."
 }
 

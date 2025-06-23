@@ -238,6 +238,7 @@ function table.removekey(table, key)
     return element
 end
 -- trim string function 
+--[[
 function string.trim(s) return (s:gsub("^%s*(.-)%s*$", "%1")) end
 function string.split(input, delimiter)
     local result = {}
@@ -246,6 +247,20 @@ function string.split(input, delimiter)
         table.insert(result, string.trim(word))
     end
     return result
+end
+]]
+if not string.trim then
+    function string.trim(s) return (s:gsub("^%s*(.-)%s*$", "%1")) end
+end
+if not string.split then
+    function string.split(input, delimiter)
+        local result = {}
+        local pattern = string.format("([^%s]+)", delimiter)
+        for word in string.gmatch(input, pattern) do
+            table.insert(result, string.trim(word))
+        end
+        return result
+    end
 end
 
 function helpers.reverseTable(tab)

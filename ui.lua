@@ -4,7 +4,8 @@ local helpers = require('Navigate/util/helpers')
 local UI = {}
 local settings = {}
 
-local CANVAS, markButtonWnd, markButton, listButton, listWnd
+--local CANVAS, markButtonWnd, markButton, listButton, listWnd
+local CANVAS, markButtonWnd, markButton, listButton, listWnd, importListButton, importWindow
 local dataFileName = 'Navigate/data/items.lua'
 
 UI.Init = function(cnv)
@@ -16,10 +17,73 @@ UI.Init = function(cnv)
     UI.CreateList()
     UI.CreateShareWindow()
     UI.CreateNewPointWindow()
+	
+	UI.CreateImportWindow()
 end
 
 
+UI.CreateImportWindow = function()
+    importListButton = helpers.createButton("importListButton", listWnd,
+                                            "Import", 20, 10)
+    importListButton:SetExtent(55, 26)
+    function importListButton:OnClick() listWnd.importWindow:Show(true) end
+    importListButton:SetHandler('OnClick', importListButton.OnClick)
 
+    listWnd.importWindow = api.Interface:CreateWindow("newPointWnd",
+                                                      'Import point')
+    listWnd.importWindow:AddAnchor("CENTER", "UIParent", 0, -150)
+    listWnd.importWindow:SetExtent(300, 150)
+    listWnd.importWindow:Show(false)
+
+    -- label
+    local label = helpers.createLabel('label', listWnd.importWindow,
+                                      'Paste addon string', 0, 0)
+    label.style:SetAlign(ALIGN.CENTER)
+    label.style:SetFontSize(FONT_SIZE.MIDDLE)
+    ApplyTextColor(label, FONT_COLOR.DEFAULT)
+    label:RemoveAllAnchors()
+    label:AddAnchor("CENTER", listWnd.importWindow, 0, -30)
+    label:SetExtent(200, 30)
+
+    -- name edit
+    local nameField = helpers.createEdit('nameField', listWnd.importWindow,
+                                         'Name', 0, 0)
+    nameField.style:SetAlign(ALIGN.LEFT)
+    ApplyTextColor(nameField, FONT_COLOR.DEFAULT)
+    nameField:RemoveAllAnchors()
+    nameField:AddAnchor("CENTER", label, 0, 30)
+    nameField:SetExtent(200, 30)
+    nameField:SetText('')
+
+    -- save btn
+    local saveButton = helpers.createButton('saveButton', listWnd.importWindow,
+                                            'import', 0, 0)
+    saveButton:RemoveAllAnchors()
+    saveButton:AddAnchor("CENTER", nameField, 0, 40)
+    saveButton.style:SetAlign(ALIGN.CENTER)
+    ApplyTextColor(saveButton, FONT_COLOR.DEFAULT)
+
+    saveButton.OnClick = function()
+        local addonString = nameField:GetText()
+        local trimmed = string.trim(addonString:match("%[Navigate:(.+)%]"))
+        if trimmed == nil then
+            api.Log:Info('[Navigate] Invalid import string')
+            return
+        end
+
+        local unparse = string.split(trimmed, ',')
+        local pointName = unparse[1]
+        local sextant = helpers.sextantFromString(unparse[2])
+
+        UI.ImportPoint(pointName, sextant)
+
+        listWnd.importWindow:Show(false)
+        nameField:SetText('')
+
+    end
+    saveButton:SetHandler('OnClick', saveButton.OnClick)
+
+end
 
 	
 
@@ -962,6 +1026,10 @@ UI.UnLoad = function()
                 listWnd.incomingShares[i]:Show(false)
                 listWnd.incomingShares[i] = nil
             end
+        end
+        if listWnd.importWindow ~= nil then
+            listWnd.importWindow:Show(false)
+            listWnd.importWindow = nil
         end
         listWnd:Show(false)
         listWnd = nil
